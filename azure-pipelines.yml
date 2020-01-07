@@ -247,7 +247,7 @@ jobs:
     condition: always()
     displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\finish-pipeline.ps1'
+      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests

@@ -13,6 +13,35 @@ function AcquireLease($blob) {
 
 # get a blob lease to prevent test overlap
 $storageContext = New-AzureStorageContext -ConnectionString $connectionString
+
+# to maintain ordering across builds, only try to retrieve a lock when it's our turn
+$queue = Get-AzureStorageQueue –Name 'build-order' –Context $storageContext
+$queueMessage = New-Object -TypeName "Microsoft.WindowsAzure.Storage.Queue.CloudQueueMessage,$($queue.CloudQueue.GetType().Assembly.FullName)" -ArgumentList ""
+$queue.CloudQueue.AddMessage($queueMessage)
+$messageId = $queueMessage.Id
+Write-Host "Adding a queue message. This step will continue when this message is next on the queue."
+Write-Host "Queue message id: '$messageId'"
+Write-Host ""
+
+$queuePollDelay = 10
+
+while($true) {
+  # wait until we're next in the queue
+  $nextMessage = $queue.CloudQueue.PeekMessage()
+  $nextMessageId = $nextMessage.Id
+  Write-Host "Next message: '$nextMessageId'"
+  
+  if ($nextMessageId -eq $messageId) {
+    Write-Host "This job is next in the queue. Proceeding to poll for blob lease."
+    break
+  }
+
+  Write-Host "Waiting until this job is next in the queue. Will re-poll every $queuePollDelay seconds."
+  
+  Start-Sleep -s $queuePollDelay
+  Write-Host ""
+}
+
 While($true) {
   $blobs = Get-AzureStorageBlob -Context $storageContext -Container "ci-locks"
   $token = $null
@@ -52,3 +81,9 @@ While($true) {
   Start-Sleep -s $delay
   Write-Host ""
 }
+
+# now delete the message so that others may continue
+Write-Host ""
+Write-Host "Retrieving and deleting message '$messageId' from queue."
+$queueMessage = $queue.CloudQueue.GetMessage()
+$queue.CloudQueue.DeleteMessage($queueMessage)
