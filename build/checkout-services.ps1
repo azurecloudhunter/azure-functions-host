@@ -17,7 +17,9 @@ $storageContext = New-AzureStorageContext -ConnectionString $connectionString
 # to maintain ordering across builds, only try to retrieve a lock when it's our turn
 $queue = Get-AzureStorageQueue –Name 'build-order' –Context $storageContext
 $queueMessage = New-Object -TypeName "Microsoft.WindowsAzure.Storage.Queue.CloudQueueMessage,$($queue.CloudQueue.GetType().Assembly.FullName)" -ArgumentList ""
+Write-Host "$($queue.CloudQueue.GetType().Assembly.FullName)"
 $queue.CloudQueue.AddMessage($queueMessage)
+while ($queueMessage.Id -ne $null) { }
 $messageId = $queueMessage.Id
 Write-Host "Adding a queue message. This step will continue when this message is next on the queue."
 Write-Host "Queue message id: '$messageId'"
