@@ -218,8 +218,7 @@ jobs:
       keyVaultName: 'azure-functions-host-ci'
       secretsFilter: '*'
   - task: PowerShell@2
-    displayName: 'Initialize'
-    name: Initialize
+    displayName: 'Checkout secrets'
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\checkout-services.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
@@ -244,6 +243,12 @@ jobs:
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
       AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+  - task: PowerShell@2
+    condition: always()
+    displayName: 'Checkin secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\finish-pipeline.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
   pool:
