@@ -2,9 +2,11 @@ param (
   [string]$connectionString = ""
 )
 
+Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force
+
 function AcquireLease($blob) {
   try {
-    return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)    
+    return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)
   } catch {
     Write-Host "  Error: $_"
     return $null
@@ -12,14 +14,13 @@ function AcquireLease($blob) {
 }
 
 # get a blob lease to prevent test overlap
-$storageContext = New-AzureStorageContext -ConnectionString $connectionString
+$storageContext = New-AzStorageContext -ConnectionString $connectionString
 
 # to maintain ordering across builds, only try to retrieve a lock when it's our turn
-$queue = Get-AzureStorageQueue –Name 'build-order' –Context $storageContext
-$queueMessage = New-Object -TypeName "Microsoft.WindowsAzure.Storage.Queue.CloudQueueMessage,$($queue.CloudQueue.GetType().Assembly.FullName)" -ArgumentList ""
+$queue = Get-AzStorageQueue –Name 'build-order' –Context $storageContext
+$queueMessage = New-Object -TypeName "Microsoft.Azure.Storage.Queue.CloudQueueMessage,$($queue.CloudQueue.GetType().Assembly.FullName)" -ArgumentList ""
 Write-Host "$($queue.CloudQueue.GetType().Assembly.FullName)"
 $queue.CloudQueue.AddMessage($queueMessage)
-while ($queueMessage.Id -ne $null) { }
 $messageId = $queueMessage.Id
 Write-Host "Adding a queue message. This step will continue when this message is next on the queue."
 Write-Host "Queue message id: '$messageId'"
@@ -45,7 +46,7 @@ while($true) {
 }
 
 While($true) {
-  $blobs = Get-AzureStorageBlob -Context $storageContext -Container "ci-locks"
+  $blobs = Get-AzStorageBlob -Context $storageContext -Container "ci-locks"
   $token = $null
   
   # shuffle the blobs for random ordering
